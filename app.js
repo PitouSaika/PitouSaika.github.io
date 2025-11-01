@@ -11,6 +11,29 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 let supa;
 try{ if(window.supabase){ supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON); } }catch(_){}
 
+// Convert a dataUrl to a File for upload
+function dataUrlToFile(dataUrl, filename){
+  const [header, body] = dataUrl.split(',');
+  const mimeMatch = /data:(.*?);base64/.exec(header||'');
+  const mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+  const binary = atob(body||'');
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for(let i=0;i<len;i++) bytes[i] = binary.charCodeAt(i);
+  return new File([bytes], filename, { type: mime });
+}
+
+async function ensureUploadedToCloud(kind, item){
+  if (!supa || item.cloudUrl) return item;
+  if (!item.dataUrl) throw new Error('No local data to upload');
+  const file = dataUrlToFile(item.dataUrl, `${kind}-${item.id||Date.now()}.bin`);
+  const up = await uploadToSupabase(kind, file);
+  const updated = { ...item, cloudUrl: up.url };
+  if (kind==='photos') await DB.putPhoto(updated);
+  else if (kind==='videos') await DB.putVideo(updated);
+  return updated;
+}
+
 // Creator profile (edit these to personalize)
 const CREATOR = {
   name: 'Rm Rance',
@@ -51,6 +74,7 @@ const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
 const importInput = document.getElementById('importInput');
 const clearAllBtn = document.getElementById('clearAllBtn');
+const syncNowBtn = document.getElementById('syncNowBtn');
 // const syncNowBtn = document.getElementById('syncNow'); // removed
 // Profile elements
 const elCreatorImg = document.getElementById('creatorImg');
@@ -203,6 +227,8 @@ toggleHearts.addEventListener('change', ()=>{ if(toggleHearts.checked) startHear
   // Try to load cloud backup (if exists)
   await cloudLoad().catch(()=>{});
   if (localStorage.getItem('session')==='ok') renderAll();
+  // Background migrate a few old items that are missing cloudUrl so they sync
+  migrateMissingCloudUrls().catch(()=>{});
 })();
 
 // Previews
@@ -234,14 +260,23 @@ photoForm.addEventListener('submit', async (e)=>{
   if (!files.length) return;
   for (const f of files){
     const dataUrl = await readAsDataURL(f);
-    await DB.addPhoto({
+    const base = {
       title: photoTitle.value.trim(),
       caption: photoCaption.value.trim(),
       author: photoAuthor.value,
-      dataUrl,
       favorite: false,
       createdAt: Date.now(),
-    });
+      dataUrl,
+    };
+    const newId = await DB.addPhoto(base);
+    // Try to upload the original file to Supabase for cross-device viewing
+    if (supa){
+      try{
+        const uploaded = await uploadToSupabase('photos', f);
+        const it = { id: newId, ...base, cloudUrl: uploaded.url };
+        await DB.putPhoto(it);
+      }catch(err){ console.warn('[photo upload] failed:', err); }
+    }
   }
   photoForm.reset(); photoPreviews.innerHTML='';
   await renderPhotos();
@@ -253,14 +288,22 @@ videoForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   const f = videoFile.files[0]; if(!f) return;
   const dataUrl = await readAsDataURL(f);
-  await DB.addVideo({
+  const base = {
     title: videoTitle.value.trim(),
     caption: videoCaption.value.trim(),
     author: videoAuthor.value,
-    dataUrl,
     favorite: false,
     createdAt: Date.now(),
-  });
+    dataUrl,
+  };
+  const newId = await DB.addVideo(base);
+  if (supa){
+    try{
+      const uploaded = await uploadToSupabase('videos', f);
+      const it = { id: newId, ...base, cloudUrl: uploaded.url };
+      await DB.putVideo(it);
+    }catch(err){ console.warn('[video upload] failed:', err); }
+  }
   videoForm.reset(); videoPreview.innerHTML='';
   await renderVideos();
   await cloudSave().catch(()=>{});
@@ -291,6 +334,18 @@ function readAsDataURL(file){
   });
 }
 
+// Upload a file to Supabase Storage and return its public URL
+async function uploadToSupabase(kind, file){
+  if(!supa) throw new Error('Supabase not available');
+  const folder = kind==='photos' ? 'photos' : 'videos';
+  const ext = (file.name?.split('.')?.pop()||'').toLowerCase() || (kind==='photos'?'jpg':'mp4');
+  const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.${ext}`;
+  const { error } = await supa.storage.from('portal').upload(path, file, { upsert:false, cacheControl:'3600' });
+  if(error) throw error;
+  const { data } = supa.storage.from('portal').getPublicUrl(path);
+  return { path, url: data.publicUrl };
+}
+
 // Renderers
 async function renderCounts(){
   const [p,v,l] = await Promise.all([DB.listPhotos(), DB.listVideos(), DB.listLetters()]);
@@ -305,7 +360,7 @@ async function renderPhotos(){
   photoGrid.innerHTML='';
   for (const it of photoList){
     const card=document.createElement('div'); card.className='card-item';
-    const img=document.createElement('img'); img.src=it.dataUrl; img.alt=it.title||'Photo'; img.loading='lazy';
+    const img=document.createElement('img'); img.src= it.cloudUrl || it.dataUrl; img.alt=it.title||'Photo'; img.loading='lazy';
     const body=document.createElement('div'); body.className='body';
     const title=document.createElement('div'); title.innerHTML = `<strong>${escapeHtml(it.title||'')}</strong>`;
     const cap=document.createElement('div'); cap.className='meta'; cap.textContent = it.caption||'';
@@ -315,6 +370,15 @@ async function renderPhotos(){
     fav.addEventListener('click', async ()=>{ it.favorite=!it.favorite; await DB.putPhoto(it); fav.classList.toggle('active', it.favorite); await cloudSave().catch(()=>{}); });
     const del=document.createElement('button'); del.className='icon-btn'; del.textContent='🗑';
     del.addEventListener('click', async()=>{ if(confirm('Delete this photo?')){ await DB.deletePhoto(it.id); await renderPhotos(); await cloudSave().catch(()=>{}); await renderCounts(); }});
+    if (!it.cloudUrl && it.dataUrl && supa){
+      const upBtn=document.createElement('button'); upBtn.className='icon-btn'; upBtn.title='Upload to cloud'; upBtn.textContent='☁';
+      upBtn.addEventListener('click', async ()=>{
+        upBtn.disabled=true;
+        try{ const updated=await ensureUploadedToCloud('photos', it); if(updated) await cloudSave().catch(()=>{}); }
+        finally{ upBtn.disabled=false; await renderPhotos(); }
+      });
+      actions.appendChild(upBtn);
+    }
     actions.append(fav, del);
     img.addEventListener('click', ()=> openPhotoLightbox(it));
     body.append(title, cap, meta);
@@ -329,7 +393,7 @@ async function renderVideos(){
   videoGrid.innerHTML='';
   for (const it of videoList){
     const card=document.createElement('div'); card.className='card-item';
-    const v=document.createElement('video'); v.src=it.dataUrl; v.muted=true; v.playsInline=true; v.controls=false; v.preload='metadata';
+    const v=document.createElement('video'); v.src= it.cloudUrl || it.dataUrl; v.muted=true; v.playsInline=true; v.controls=false; v.preload='metadata';
     const body=document.createElement('div'); body.className='body';
     const title=document.createElement('div'); title.innerHTML = `<strong>${escapeHtml(it.title||'')}</strong>`;
     const cap=document.createElement('div'); cap.className='meta'; cap.textContent = it.caption||'';
@@ -339,6 +403,15 @@ async function renderVideos(){
     fav.addEventListener('click', async ()=>{ it.favorite=!it.favorite; await DB.putVideo(it); fav.classList.toggle('active', it.favorite); await cloudSave().catch(()=>{}); });
     const del=document.createElement('button'); del.className='icon-btn'; del.textContent='🗑';
     del.addEventListener('click', async()=>{ if(confirm('Delete this video?')){ await DB.deleteVideo(it.id); await renderVideos(); await cloudSave().catch(()=>{}); await renderCounts(); }});
+    if (!it.cloudUrl && it.dataUrl && supa){
+      const upBtn=document.createElement('button'); upBtn.className='icon-btn'; upBtn.title='Upload to cloud'; upBtn.textContent='☁';
+      upBtn.addEventListener('click', async ()=>{
+        upBtn.disabled=true;
+        try{ const updated=await ensureUploadedToCloud('videos', it); if(updated) await cloudSave().catch(()=>{}); }
+        finally{ upBtn.disabled=false; await renderVideos(); }
+      });
+      actions.appendChild(upBtn);
+    }
     actions.append(fav, del);
     v.addEventListener('click', ()=> openVideoModal(it));
     body.append(title, cap, meta);
@@ -376,27 +449,81 @@ async function cloudSave(){
   if(!supa) return; // SDK not loaded
   try{
     const [photos, videos, letters] = await Promise.all([DB.listPhotos(), DB.listVideos(), DB.listLetters()]);
-    const blob = new Blob([JSON.stringify({version:1, savedAt:Date.now(), photos, videos, letters})], {type:'application/json'});
+    // Prefer metadata-only, but include dataUrl as fallback when cloudUrl is missing (for cross-device until uploaded)
+    const mapPhoto = (x)=> x.cloudUrl
+      ? ({ title:x.title, caption:x.caption, author:x.author, favorite:x.favorite, createdAt:x.createdAt, cloudUrl:x.cloudUrl })
+      : ({ title:x.title, caption:x.caption, author:x.author, favorite:x.favorite, createdAt:x.createdAt, dataUrl:x.dataUrl });
+    const mapVideo = (x)=> x.cloudUrl
+      ? ({ title:x.title, caption:x.caption, author:x.author, favorite:x.favorite, createdAt:x.createdAt, cloudUrl:x.cloudUrl })
+      : ({ title:x.title, caption:x.caption, author:x.author, favorite:x.favorite, createdAt:x.createdAt, dataUrl:x.dataUrl });
+    const mapLetter = ({title,body,author,favorite,createdAt})=>({title,body,author,favorite,createdAt});
+    const payload = { version:1, savedAt:Date.now(), photos:photos.map(mapPhoto), videos:videos.map(mapVideo), letters:letters.map(mapLetter) };
+    const json = JSON.stringify(payload);
+    // Size guard ~15MB
+    const approxBytes = new TextEncoder().encode(json).length;
+    const MAX_BYTES = 15 * 1024 * 1024;
+    if (approxBytes > MAX_BYTES){
+      console.warn('[cloudSave] skipped: payload too large (~', Math.round(approxBytes/1024/1024), 'MB). Media still loads via cloudUrl; consider exporting backup or pruning old items.');
+      return;
+    }
+    const blob = new Blob([json], {type:'application/json'});
     const { error } = await supa.storage.from('portal').upload('backup.json', blob, { upsert:true, cacheControl:'0' });
     if(error) throw error;
-  }catch(err){ /* silent */ }
+  }catch(err){ console.warn('[cloudSave] failed:', err); }
 }
 
 async function cloudLoad(){
   if(!supa) return; // SDK not loaded
   try{
+    // Load local first to allow safe merge
+    const [pLocal, vLocal, lLocal] = await Promise.all([DB.listPhotos(), DB.listVideos(), DB.listLetters()]);
+
     const { data, error } = await supa.storage.from('portal').download('backup.json');
-    if(error) return; // no file yet
+    if(error || !data){
+      // nothing in cloud yet, keep local as-is
+      return;
+    }
     const text = await data.text();
-    const json = JSON.parse(text);
-    if(!json || !Array.isArray(json.photos) || !Array.isArray(json.videos) || !Array.isArray(json.letters)) return;
+    let json;
+    try { json = JSON.parse(text); } catch(_) { json = null; }
+
+    const pCloud = Array.isArray(json?.photos) ? json.photos : [];
+    const vCloud = Array.isArray(json?.videos) ? json.videos : [];
+    const lCloud = Array.isArray(json?.letters) ? json.letters : [];
+
+    // Merge cloud and local using a stable key (createdAt+title) to avoid duplicates when one has cloudUrl and the other has dataUrl
+    const photos = mergeByKey([...pCloud, ...pLocal], (x)=>`${x.createdAt||0}-${x.title||''}`)
+      .sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+    const videos = mergeByKey([...vCloud, ...vLocal], (x)=>`${x.createdAt||0}-${x.title||''}`)
+      .sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+    const letters = mergeByKey([...lCloud, ...lLocal], (x)=>`${x.createdAt||0}-${x.title||''}-${(x.body||'').slice(0,24)}`)
+      .sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+
+    // Replace local with merged set
     await Promise.all([DB.clearPhotos(), DB.clearVideos(), DB.clearLetters()]);
-    for(const p of json.photos){ delete p.id; await DB.addPhoto(p); }
-    for(const v of json.videos){ delete v.id; await DB.addVideo(v); }
-    for(const l of json.letters){ delete l.id; await DB.addLetter(l); }
+    for(const p of photos){ delete p.id; await DB.addPhoto(p); }
+    for(const v of videos){ delete v.id; await DB.addVideo(v); }
+    for(const l of letters){ delete l.id; await DB.addLetter(l); }
     await renderAll();
   }catch(err){ /* silent */ }
 }
+
+// Background migration: upload up to 3 items missing cloudUrl
+async function migrateMissingCloudUrls(){
+  if (!supa) return;
+  try{
+    const [p,v] = await Promise.all([DB.listPhotos(), DB.listVideos()]);
+    const need = [...p.filter(x=>!x.cloudUrl && x.dataUrl).slice(0,2), ...v.filter(x=>!x.cloudUrl && x.dataUrl).slice(0,1)];
+    for(const it of need){
+      const kind = it.dataUrl && (it.dataUrl.startsWith('data:video') ? 'videos' : 'photos');
+      try { await ensureUploadedToCloud(kind, it); } catch(_){}
+    }
+    if (need.length) await cloudSave().catch(()=>{});
+  }catch(_){}
+}
+
+// Manual sync button
+if (syncNowBtn){ syncNowBtn.addEventListener('click', async ()=>{ await cloudLoad().catch(()=>{}); }); }
 
 // --- Sync helpers (disabled) ---
 async function api(method, path, body){
@@ -468,7 +595,7 @@ function openPhotoLightbox(it){
 function showPhotoAt(i){
   const it = photoList[i];
   if (!it) return;
-  viewImg.src = it.dataUrl;
+  viewImg.src = it.cloudUrl || it.dataUrl;
   viewCaption.textContent = it.caption||'';
   viewMeta.textContent = `${it.author==='me'?'From me':'From her'} • ${timeStr(it.createdAt)}`;
 }
@@ -476,7 +603,7 @@ photoPrevBtn.addEventListener('click', ()=>{ if(photoList.length){ currentPhotoI
 photoNextBtn.addEventListener('click', ()=>{ if(photoList.length){ currentPhotoIndex=(currentPhotoIndex+1)%photoList.length; showPhotoAt(currentPhotoIndex);} });
 
 function openVideoModal(it){
-  viewVideo.src = it.dataUrl;
+  viewVideo.src = it.cloudUrl || it.dataUrl;
   videoCaptionText.textContent = it.caption||'';
   videoMeta.textContent = `${it.author==='me'?'From me':'From her'} • ${timeStr(it.createdAt)}`;
   videoModal.classList.remove('hide');
@@ -631,3 +758,4 @@ clearAllBtn.addEventListener('click', async ()=>{
   await renderAll();
 });
 // no sync button wired
+
