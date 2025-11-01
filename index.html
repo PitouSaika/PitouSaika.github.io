@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dubidubidapdap's Couple — Private Space</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&family:Dancing+Script:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg"><div class="gradient"></div><div id="floatHearts" class="float-hearts" aria-hidden="true"></div></div>
+
+  <header class="brand"><h1 class="logo"><span>Pitou Dubidubidapdap & Saika Dubidubidapdap</span>💗</h1></header>
+
+  <main>
+    <!-- Login -->
+    <section id="login" class="card login">
+      <h2 class="script">Welcome po, Mahal ko!</h2>
+      <p class="muted">Private Space just for the two of us</p>
+      <form id="loginForm" class="form">
+        <div class="row">
+          <input id="username" type="text" placeholder="Username" required autocomplete="off" />
+        </div>
+        <div class="row password">
+          <input id="password" type="password" placeholder="Password" required />
+          <button type="button" id="togglePw" class="eye" aria-label="Show password">👁</button>
+        </div>
+        <button type="submit" class="btn primary">Enter</button>
+        <p id="loginError" class="error" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <!-- App -->
+    <section id="app" class="app hide">
+      <aside class="nav">
+        <button class="tab" data-tab="dashboard">🏠 Dashboard</button>
+        <button class="tab" data-tab="photos">📸 Photos</button>
+        <button class="tab" data-tab="videos">🎬 Videos</button>
+        <button class="tab" data-tab="letters">💌 Letters</button>
+        <div class="spacer"></div>
+        <label class="toggle"><input type="checkbox" id="toggleHearts" checked /> Hearts</label>
+        <button id="logout" class="btn ghost small">Logout</button>
+      </aside>
+
+      <section class="content">
+        <!-- Dashboard -->
+        <div id="dashboard" class="panel active">
+          <h2 class="script">Dubidubidapdap's Couple Memories</h2>
+          <p class="muted">Tayong dlawa lang po, mahal ko. Walang away, sigawan, galit. Puro pagmamahal lang at kasiyahan kagaya nang ipinangako ko sa'yo</p>
+          <div class="stats">
+            <div class="stat"><div class="num" id="countPhotos">0</div><div class="label">Photos</div></div>
+            <div class="stat"><div class="num" id="countVideos">0</div><div class="label">Videos</div></div>
+            <div class="stat"><div class="num" id="countLetters">0</div><div class="label">Letters</div></div>
+          </div>
+          <div class="tools">
+            <button id="exportBtn" class="btn ghost small">Export Backup</button>
+            <input id="importInput" type="file" accept="application/json" class="sr-only" />
+            <button id="importBtn" class="btn ghost small">Import Backup</button>
+            <button id="clearAllBtn" class="btn small" style="background:#fff0f3;border:1px solid #ffc4d3;color:#b03951">Clear All</button>
+          </div>
+        </div>
+
+        <!-- Photos -->
+        <div id="photos" class="panel">
+          <h3 class="panel-title">Photos</h3>
+          <form id="photoForm" class="stack uploader">
+            <div class="row two">
+              <input id="photoTitle" type="text" placeholder="Title (optional)" />
+              <select id="photoAuthor" required>
+                <option value="me">From Pitou</option>
+                <option value="her">From Saika</option>
+              </select>
+            </div>
+            <div class="row">
+              <input id="photoFiles" type="file" accept="image/*" multiple required />
+            </div>
+            <div id="photoPreviews" class="previews"></div>
+            <textarea id="photoCaption" rows="2" placeholder="Caption / message (optional)"></textarea>
+            <button type="submit" class="btn primary">Save Photos</button>
+          </form>
+          <div class="toolbar">
+            <div class="filters">
+              <button class="chip active" data-filter="all">All</button>
+              <button class="chip" data-filter="fav">Favorites</button>
+            </div>
+            <div class="sort">
+              <select id="photoSort">
+                <option value="new">Newest first</option>
+                <option value="old">Oldest first</option>
+              </select>
+            </div>
+          </div>
+          <div id="photoGrid" class="grid"></div>
+        </div>
+
+        <!-- Videos -->
+        <div id="videos" class="panel">
+          <h3 class="panel-title">Videos</h3>
+          <form id="videoForm" class="stack uploader">
+            <div class="row two">
+              <input id="videoTitle" type="text" placeholder="Title (optional)" />
+              <select id="videoAuthor" required>
+                <option value="me">From Pitou</option>
+                <option value="her">From Saika</option>
+              </select>
+            </div>
+            <div class="row">
+              <input id="videoFile" type="file" accept="video/*" required />
+            </div>
+            <div id="videoPreview" class="previews"></div>
+            <textarea id="videoCaption" rows="2" placeholder="Caption / message (optional)"></textarea>
+            <button type="submit" class="btn primary">Save Video</button>
+          </form>
+          <div class="toolbar">
+            <div class="filters">
+              <button class="chip active" data-filter="all">All</button>
+              <button class="chip" data-filter="fav">Favorites</button>
+            </div>
+            <div class="sort">
+              <select id="videoSort">
+                <option value="new">Newest first</option>
+                <option value="old">Oldest first</option>
+              </select>
+            </div>
+          </div>
+          <div id="videoGrid" class="grid"></div>
+        </div>
+
+        <!-- Letters -->
+        <div id="letters" class="panel">
+          <h3 class="panel-title">Letters</h3>
+          <form id="letterForm" class="stack uploader">
+            <div class="row two">
+              <input id="letterTitle" type="text" placeholder="Title" />
+              <select id="letterAuthor" required>
+                <option value="me">From Pitou</option>
+                <option value="her">From Saika</option>
+              </select>
+            </div>
+            <div class="formatbar">
+              <button type="button" id="btnBold" class="btn small">B</button>
+              <button type="button" id="btnItalic" class="btn small"><em>I</em></button>
+            </div>
+            <textarea id="letterBody" rows="5" placeholder="Isulat mo galing sa puso mo. . ." required></textarea>
+            <button type="submit" class="btn primary">Save Letter</button>
+          </form>
+          <div class="toolbar">
+            <div class="filters">
+              <button class="chip active" data-filter="all">All</button>
+              <button class="chip" data-filter="fav">Favorites</button>
+            </div>
+            <div class="sort">
+              <select id="letterSort">
+                <option value="new">Newest first</option>
+                <option value="old">Oldest first</option>
+              </select>
+            </div>
+          </div>
+          <div id="letterList" class="list"></div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <footer class="panel" style="margin:16px;">
+    <div class="profile-card">
+      <div class="avatar">
+        <img id="creatorImg" src="" alt="Creator photo" onerror="this.classList.add('fallback')" />
+        <div class="initials" aria-hidden="true">K L</div>
+      </div>
+      <div class="who">
+        <div class="name">Rm Rance</div>
+        <div class="role">Web Developer</div>
+        <div class="edu">BS Information Technology — 1st Year</div>
+        <div class="school">Bulacan State University</div>
+      </div>
+      <div class="links">
+        <a id="linkGitHub" href="#" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58 0-.29-.01-1.06-.02-2.07-3.34.73-4.04-1.61-4.04-1.61-.55-1.4-1.34-1.77-1.34-1.77-1.1-.75.08-.74.08-.74 1.22.09 1.86 1.25 1.86 1.25 1.08 1.85 2.83 1.31 3.52 1 .11-.79.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.67 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.62-2.81 5.64-5.48 5.94.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58A12 12 0 0 0 12 .5Z"/></svg>
+        </a>
+        <a id="linkInstagram" href="#" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.2.06 1.9.25 2.4.42.6.23 1 .5 1.5.95.46.46.72.88.95 1.5.17.5.36 1.2.42 2.4.07 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.2-.25 1.9-.42 2.4-.23.6-.5 1-.95 1.5-.46.46-.88.72-1.5.95-.5.17-1.2.36-2.4.42-1.3.07-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.06-1.9-.25-2.4-.42-.6-.23-1-.5-1.5-.95-.46-.46-.72-.88-.95-1.5-.17-.5-.36-1.2-.42-2.4C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.2.25-1.9.42-2.4.23-.6.5-1 .95-1.5.46-.46.88-.72 1.5-.95.5-.17 1.2-.36 2.4-.42C8.4 2.2 8.8 2.2 12 2.2m0 1.8c-3.15 0-3.52 0-4.76.07-1.02.05-1.57.22-1.93.36-.49.19-.84.42-1.21.79-.37.37-.6.72-.79 1.21-.14.36-.31.91-.36 1.93C3.88 10.48 3.88 10.85 3.88 14s0 3.52.07 4.76c.05 1.02.22 1.57.36 1.93.19.49.42.84.79 1.21.37.37.72.6 1.21.79.36.14.91..31 1.93.36 1.24.07 1.61.07 4.76.07s3.52 0 4.76-.07c1.02-.05 1.57-.22 1.93-.36.49-.19.84-.42 1.21-.79.37-.37.6-.72.79-1.21.14-.36.31-.91.36-1.93.07-1.24.07-1.61.07-4.76s0-3.52-.07-4.76c-.05-1.02-.22-1.57-.36-1.93-.19-.49-.42-.84-.79-1.21-.37-.37-.72-.6-1.21-.79-.36-.14-.91-.31-1.93-.36C15.52 4 15.15 4 12 4zm0 2.7a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6m0 1.8a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7m5.6-2.1a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5"/></svg>
+        </a>
+        <a id="linkFacebook" href="#" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12.06C22 6.48 17.52 2 11.94 2 6.36 2 1.88 6.48 1.88 12.06c0 4.99 3.66 9.13 8.44 9.94v-7.03H7.9v-2.9h2.42V9.93c0-2.4 1.43-3.73 3.62-3.73 1.05 0 2.15.19 2.15.19v2.36h-1.21c-1.2 0-1.57.75-1.57 1.51v1.82h2.67l-.43 2.9h-2.24V22c4.78-.81 8.44-4.95 8.44-9.94Z"/></svg>
+        </a>
+        <a id="linkEmail" href="mailto:" aria-label="Email" title="Email">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6.5A2.5 2.5 0 0 1 4.5 4h15A2.5 2.5 0 0 1 22 6.5v11A2.5 2.5 0 0 1 19.5 20h-15A2.5 2.5 0 0 1 2 17.5v-11Zm2.2-.5 7.3 5.2L18.8 6H4.2Zm15.3 2-6.7 4.8a1.5 1.5 0 0 1-1.8 0L4.3 8v9.5c0 .28.22.5.5.5h14.4c.28 0 .5-.22.5-.5V8Z"/></svg>
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Photo lightbox -->
+  <div id="photoModal" class="modal hide" role="dialog" aria-modal="true">
+    <div class="modal-content photo-view">
+      <button class="close" data-close>&times;</button>
+      <button class="arrow prev" id="photoPrev" aria-label="Previous">❮</button>
+      <button class="arrow next" id="photoNext" aria-label="Next">❯</button>
+      <img id="viewImg" alt="Photo" />
+      <div class="letter-paper">
+        <p id="viewCaption"></p>
+        <p class="meta" id="viewMeta"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Video modal -->
+  <div id="videoModal" class="modal hide" role="dialog" aria-modal="true">
+    <div class="modal-content video-view">
+      <button class="close" data-close>&times;</button>
+      <video id="viewVideo" controls playsinline style="width:100%; border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.25)"></video>
+      <div class="letter-paper">
+        <p id="videoCaptionText"></p>
+        <p class="meta" id="videoMeta"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile bottom sheet -->
+  <div id="profileModal" class="sheet hide" role="dialog" aria-modal="true" aria-label="Creator Profile">
+    <div class="sheet-content">
+      <div class="sheet-grabber" aria-hidden="true"></div>
+      <button class="close" data-close>&times;</button>
+      <div class="profile-sheet">
+        <div class="avatar big">
+          <img id="profileAvatar" alt="Avatar" />
+          <div class="initials" aria-hidden="true">K L</div>
+        </div>
+        <div class="who">
+          <div id="profileName" class="name">Rm Rance</div>
+          <div id="profileRole" class="role">Web Developer</div>
+          <div id="profileEdu" class="edu">BS Information Technology — 1st Year</div>
+          <div id="profileSchool" class="school">Bulacan State University</div>
+        </div>
+        <div class="links">
+          <a id="profileLinkGitHub" href="#" target="_blank" rel="noopener" aria-label="GitHub" title="GitHub">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.79 23.4c.6.11.82-.26.82-.58 0-.29-.01-1.06-.02-2.07-3.34.73-4.04-1.61-4.04-1.61-.55-1.4-1.34-1.77-1.34-1.77-1.1-.75.08-.74.08-.74 1.22.09 1.86 1.25 1.86 1.25 1.08 1.85 2.83 1.31 3.52 1 .11-.79.42-1.31.76-1.61-2.67-.3-5.47-1.34-5.47-5.95 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.28-1.55 3.29-1.23 3.29-1.23.67 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.62-2.81 5.64-5.48 5.94.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58A12 12 0 0 0 12 .5Z"/></svg>
+          </a>
+          <a id="profileLinkInstagram" href="#" target="_blank" rel="noopener" aria-label="Instagram" title="Instagram">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.2c3.2 0 3.6 0 4.9.07 1.2.06 1.9.25 2.4.42.6.23 1 .5 1.5.95.46.46.72.88.95 1.5.17.5.36 1.2.42 2.4.07 1.3.07 1.7.07 4.9s0 3.6-.07 4.9c-.06 1.2-.25 1.9-.42 2.4-.23.6-.5 1-.95 1.5-.46.46-.88.72-1.5.95-.5.17-1.2.36-2.4.42-1.3.07-1.7.07-4.9.07s-3.6 0-4.9-.07c-1.2-.06-1.9-.25-2.4-.42-.6-.23-1-.5-1.5-.95-.46-.46-.72-.88-.95-1.5-.17-.5-.36-1.2-.42-2.4C2.2 15.6 2.2 15.2 2.2 12s0-3.6.07-4.9c.06-1.2.25-1.9.42-2.4.23-.6.5-1 .95-1.5.46-.46.88-.72 1.5-.95.5-.17 1.2-.36 2.4-.42C8.4 2.2 8.8 2.2 12 2.2m0 1.8c-3.15 0-3.52 0-4.76.07-1.02.05-1.57.22-1.93.36-.49.19-.84.42-1.21.79-.37.37-.6.72-.79 1.21-.14.36-.31.91-.36 1.93C3.88 10.48 3.88 10.85 3.88 14s0 3.52.07 4.76c.05 1.02.22 1.57.36 1.93.19.49.42.84.79 1.21.37.37.72.6 1.21.79.36.14.91.31 1.93.36 1.24.07 1.61.07 4.76.07s3.52 0 4.76-.07c1.02-.05 1.57-.22 1.93-.36.49-.19.84-.42 1.21-.79.37-.37.6-.72.79-1.21.14-.36.31-.91.36-1.93.07-1.24.07-1.61.07-4.76s0-3.52-.07-4.76c-.05-1.02-.22-1.57-.36-1.93-.19-.49-.42-.84-.79-1.21-.37-.37-.72-.6-1.21-.79-.36-.14-.91-.31-1.93-.36C15.52 4 15.15 4 12 4zm0 2.7a5.3 5.3 0 1 1 0 10.6 5.3 5.3 0 0 1 0-10.6m0 1.8a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7m5.6-2.1a1.25 1.25 0 1 1 0 2.5 1.25 1.25 0 0 1 0-2.5"/></svg>
+          </a>
+          <a id="profileLinkFacebook" href="#" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12.06C22 6.48 17.52 2 11.94 2 6.36 2 1.88 6.48 1.88 12.06c0 4.99 3.66 9.13 8.44 9.94v-7.03H7.9v-2.9h2.42V9.93c0-2.4 1.43-3.73 3.62-3.73 1.05 0 2.15.19 2.15.19v2.36h-1.21c-1.2 0-1.57.75-1.57 1.51v1.82h2.67l-.43 2.9h-2.24V22c4.78-.81 8.44-4.95 8.44-9.94Z"/></svg>
+          </a>
+          <a id="profileLinkEmail" href="mailto:" aria-label="Email" title="Email">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6.5A2.5 2.5 0 0 1 4.5 4h15A2.5 2.5 0 0 1 22 6.5v11A2.5 2.5 0 0 1 19.5 20h-15A2.5 2.5 0 0 1 2 17.5v-11Zm2.2-.5 7.3 5.2L18.8 6H4.2Zm15.3 2-6.7 4.8a1.5 1.5 0 0 1-1.8 0L4.3 8v9.5c0 .28.22.5.5.5h14.4c.28 0 .5-.22.5-.5V8Z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="db.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
